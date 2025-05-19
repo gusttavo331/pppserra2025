@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planilha de Controle de Ações PPP 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status-dropdown {
+            width: 100%;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            transition: width 0.3s ease;
+        }
+        .charts-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        .chart-wrapper {
+            width: 48%;
+            margin-bottom: 20px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        @media (max-width: 768px) {
+            .chart-wrapper {
+                width: 100%;
+            }
+        }
+        .summary {
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .summary h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .summary-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+        }
+        .toolbar {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .status-cell {
+            text-align: center;
+        }
+        .status-0 { background-color: #ffebee; } /* A realizar */
+        .status-25 { background-color: #fff8e1; } /* Realizada Parcialmente 25% */
+        .status-50 { background-color: #fff176; } /* Realizada Parcialmente 50% */
+        .status-75 { background-color: #c5e1a5; } /* Realizada Parcialmente 75% */
+        .status-100 { background-color: #a5d6a7; } /* Concluída */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Planilha de Controle de Ações PPP 2025</h1>
+        
+        <div class="toolbar">
+            <div class="actions">
+                <button id="downloadExcel">Exportar para Excel</button>
+                <button id="printTable">Imprimir</button>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="filter-group">
+                <label for="bimestreFilter">Filtrar por Bimestre:</label>
+                <select id="bimestreFilter">
+                    <option value="todos">Todos os Bimestres</option>
+                    <option value="1">1º Bimestre</option>
+                    <option value="2">2º Bimestre</option>
+                    <option value="3">3º Bimestre</option>
+                    <option value="4">4º Bimestre</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="statusFilter">Filtrar por Status:</label>
+                <select id="statusFilter">
+                    <option value="todos">Todos os Status</option>
+                    <option value="0">A Realizar</option>
+                    <option value="25">Realizada Parcialmente 25%</option>
+                    <option value="50">Realizada Parcialmente 50%</option>
+                    <option value="75">Realizada Parcialmente 75%</option>
+                    <option value="100">Concluída</option>
+                </select>
+            </div>
+            
+            <button id="refreshData">Atualizar Dados</button>
+        </div>
+        
+        <div class="table-container">
+            <table id="acoesTable">
+                <thead>
+                    <tr>
+                        <th>Ordem</th>
+                        <th>Ação</th>
+                        <th>Períodos (Bimestres)</th>
+                        <th>Prazo</th>
+                        <th>Status</th>
+                        <th>Progresso</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Os dados serão inseridos pelo JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="summary">
+            <h3>Resumo de Progresso</h3>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <h4>Total de Ações</h4>
+                    <p id="totalAcoes">0</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Ações Concluídas</h4>
+                    <p id="acoesConcluidas">0</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Ações em Andamento</h4>
+                    <p id="acoesAndamento">0</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Ações a Realizar</h4>
+                    <p id="acoesARealizar">0</p>
+                </div>
+                <div class="summary-item">
+                    <h4>Progresso Geral</h4>
+                    <div class="progress-bar">
+                        <div id="progressoGeral" class="progress" style="width: 0%">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="charts-container">
+            <div class="chart-wrapper">
+                <canvas id="statusChart"></canvas>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="bimestreChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados das ações do PPP
+        const acoes = [
+            { ordem: 1, acao: "Realizar dois acolhimentos semestrais aos alunos e equipe escolar no retorno das aulas.", periodos: [1, 3], prazo: "FEVEREIRO, AGOSTO", status: 50 },
+            { ordem: 2, acao: "Realizar anualmente a Gincana Interdisciplinar das quatro áreas do conhecimento.", periodos: [3], prazo: "OUTUBRO", status: 0 },
+            { ordem: 3, acao: "Realizar aplicação mensal nas turmas de 9º ano do Ensino Fundamental II e nas 3ª séries do Ensino Médio, simulado com foco nos descritores de baixo rendimento no IDEB.", periodos: [1, 2, 3, 4], prazo: "MARÇO, MAIO, JUNHO, AGOSTO, OUTUBRO", status: 20 },
+            { ordem: 4, acao: "Realizar uma semana de aulões preparatório para ENEM com as turmas de 3ª série em todas as áreas do conhecimento.", periodos: [4], prazo: "NOVEMBRO", status: 0 },
+            { ordem: 5, acao: "Promover bimestralmente premiação com certificação aos alunos destaques em Língua Portuguesa e Matemática, para incentivar a participação nas avaliações externas (IDETO/SAEB/APROVA BRASIL)", periodos: [1, 2, 3, 4], prazo: "ABRIL, JUNHO, OUTUBRO, DEZEMBRO", status: 25 },
+            { ordem: 6, acao: "Produzir cartazes para expor e homenagear os alunos do ensino fundamental II e ensino médio que se destacaram no bimestre na área de linguagem.", periodos: [1, 2, 3, 4], prazo: "ABRIL, JUNHO, OUTUBRO, DEZEMBRO", status: 25 },
+            { ordem: 7, acao: "Promover a culminância dos itinerários Formativos na área de Linguagens - Eletivas: Jogos e Brincadeiras: da rua para escola, brincando, revivendo e aprendendo. Jogos de tabuleiro, Escrever bem, que mal tem? Audiovisual", periodos: [2, 4], prazo: "JUNHO, DEZEMBRO", status: 0 },
+            { ordem: 8, acao: "Desenvolver um projeto macro de leitura 'Viajantes Literários', contemplando o Ensino Fundamental, Médio e EJA.", periodos: [1, 2, 3, 4], prazo: "", status: 33 },
+            { ordem: 9, acao: "Promover anualmente 3 dias 'D' de Leitura com todos os alunos da Unidade Escolar: Sarau literário.", periodos: [2, 3], prazo: "ABRIL, JUNHO, SETEMBRO", status: 0 },
+            { ordem: 10, acao: "Realizar anualmente o Concurso Soletrando baseado nas aulas ministradas em inglês no Ensino Fundamental e médio.", periodos: [3], prazo: "AGOSTO", status: 0 },
+            { ordem: 11, acao: "Realizar semestralmente aula lúdica de Língua Inglesa do 6º ao 9º ano do Ensino Fundamental II (Anos Finais). - Produção de flash card. - Jogos", periodos: [2, 4], prazo: "JUNHO, NOVEMBRO", status: 0 },
+            { ordem: 12, acao: "Inscrever os alunos do 6º ano do Ensino Fundamental II no concurso Nacional Abracopel de Redação, desenho e vídeo.", periodos: [2], prazo: "MAIO, JUNHO", status: 100 },
+            { ordem: 13, acao: "Inscrever os alunos das 3ª séries do Ensino Médio para participar do Concurso de redação do Programa Jovem Senador.", periodos: [2], prazo: "ABRIL", status: 0 },
+            { ordem: 14, acao: "Participar da Olimpíada Brasileira de Língua Portuguesa e Matemática nas turmas do ensino fundamental (6º ao 9º ano) e Ensino Médio.", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 15, acao: "Realizar concurso de Desenho e Redação da CGU com alunos do ensino fundamental II e Ensino médio.", periodos: [3], prazo: "AGOSTO, SETEMBRO", status: 0 },
+            { ordem: 16, acao: "Realizar anualmente Concurso interno da U.E. de Redação com os alunos do Ensino Médio. Adquirir itens necessários para a realização do concurso de desenho e redação", periodos: [3], prazo: "AGOSTO, SETEMBRO", status: 0 },
+            { ordem: 17, acao: "Inscrever os alunos da Unidade escolar que queiram participar do concurso de cartas da empresa 'CORREIOS'.", periodos: [1], prazo: "MARÇO", status: 100 },
+            { ordem: 18, acao: "Realizar semestralmente jogos interclasses com todos os alunos da unidade escolar.", periodos: [2, 4], prazo: "JUNHO, DEZEMBRO", status: 0 },
+            { ordem: 19, acao: "Adquirir itens para diversificar materiais esportivos para as aulas práticas de educação física", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 20, acao: "Disponibilizar recursos para adquirir materiais para as práticas esportivas (vôlei e golzinho)", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 21, acao: "Adquirir uma Impressora colorida Epson Ecotank L1250 para subsidiar na confecção de materiais interativos, cópias, impressões etc. para os alunos atendidos pela U.E.", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 22, acao: "Adquirir itens para realização do Interclasse", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 23, acao: "Adquirir uma Impressora colorida Epson Ecotank L1250 para subsidiar na confecção de materiais interativos, cópias, impressões etc. para os alunos atendidos pela U.E.", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 24, acao: "Adquirir itens para subsidiar as ações da área de linguagens", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 25, acao: "Adquirir material para subsidiar aulas de arte.", periodos: [3, 4], prazo: "AGOSTO, SETEMBRO, OUTUBRO, NOVEMBRO, DEZEMBRO", status: 0 },
+            { ordem: 26, acao: "Promover bimestralmente certificação aos alunos destaques em Língua Portuguesa e Matemática, para incentivar a participação nas avaliações externas (SAETO/SAEB)", periodos: [1, 2, 3, 4], prazo: "ABRIL, AGOSTO, OUTUBRO, DEZEMBRO", status: 25 },
+            { ordem: 27, acao: "Realizar aulas de nivelamento de matemática diversificadas bimestralmente.", periodos: [1, 2, 3, 4], prazo: "ABRIL, JUNHO, OUTUBRO, DEZEMBRO", status: 25 },
+            { ordem: 28, acao: "Realizar dois eventos anuais de culminâncias das Eletivas da área de Ciências Humanas.", periodos: [2, 4], prazo: "JUNHO, DEZEMBRO", status: 0 },
+            { ordem: 29, acao: "Realizar dois mapeamentos de memória local, com os alunos do Ensino Fundamental II (Anos Finais)", periodos: [2], prazo: "MAIO, JUNHO", status: 100 },
+            { ordem: 30, acao: "Realizar uma viagem ao Museu Histórico de Pedro Afonso com os alunos destaque na área de Ciências Humanas.", periodos: [3], prazo: "AGOSTO A OUTUBRO", status: 0 },
+            { ordem: 31, acao: "Realizar anualmente o projeto 'Por todas as Marias': atividades sobre direitos humanos, democracia e participação política. Em alusão a semana de combate à violência contra mulher.", periodos: [1], prazo: "MARÇO", status: 0 },
+            { ordem: 32, acao: "Promover anualmente atividades diversas na Semana Cívica do 7 de setembro com os alunos do Ensino Fundamental II, Ensino Médio e Educação de Jovens e Adultos.", periodos: [3], prazo: "SETEMBRO", status: 0 },
+            { ordem: 33, acao: "Realizar a Semana Cultural Afro e Escravo nem pensar e Sarau da Cultura Tocantinense", periodos: [4], prazo: "NOVEMBRO", status: 0 },
+            { ordem: 34, acao: "Promover anualmente o projeto: 'Cinema Afro', para todos os alunos da Unidade Escolar.", periodos: [3, 4], prazo: "OUTUBRO, NOVEMBRO", status: 0 },
+            { ordem: 35, acao: "Projeto 'Geografia Viva': Realizar uma visita ao Lago para realização da conscientização dos alunos quanto aos impactos ambientais.", periodos: [3], prazo: "AGOSTO", status: 0 },
+            { ordem: 36, acao: "Realizar o concurso: Criação de Desenho e Slogan com a temática sobre queimadas e seus efeitos, para os alunos do 6º ao 9º ano, para promover a sensibilização da comunidade sobre a questão. A mesma faz parte do Projeto COM-VIDA.", periodos: [3], prazo: "AGOSTO A OUTUBRO", status: 0 },
+            { ordem: 37, acao: "Aquisição de mapas para subsidiar as aulas de Geografia e História para o Ensino Fundamental e Médio.", periodos: [3, 4], prazo: "AGOSTO A DEZEMBRO", status: 0 },
+            { ordem: 38, acao: "Realizar no segundo bimestre a 4ª Trilha Ecológica.", periodos: [2], prazo: "JUNHO", status: 0 },
+            { ordem: 39, acao: "Realizar inscrição dos alunos do Ensino Fundamental II e Ensino Médio para participarem dos eventos externos na área de Ciências Humanas. Olimpíada Brasileira de Geografia (OBG), Olimpíada nacional de Filosofia (Onfil), Olimpíada Nacional de História do Brasil (ONHB).", periodos: [1, 2, 3, 4], prazo: "MARÇO", status: 35 },
+            { ordem: 40, acao: "Realizar anualmente um concurso de desenho da área de Física, com os alunos do Ensino Médio.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 41, acao: "Adquirir materiais pedagógicos para realização do concurso desenho da área de Física.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 42, acao: "Realizar anualmente a noite da observação espacial.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 43, acao: "Promover anualmente uma visita à Usina Hidrelétrica Luís Eduardo Magalhães em Lajeado – TO.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 44, acao: "Adquirir um telescópio refletor newtoniano 130mm.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 45, acao: "Promover o concurso: Prato saudável criativo para culminância da semana da alimentação saudável.", periodos: [2], prazo: "ABRIL", status: 100 },
+            { ordem: 46, acao: "Realizar anualmente: Participação da MobFog com o dia 'D' de lançamentos de foguetes de garrafa Pet, contemplando a Astrobiologia e Astronomia, promovendo a iniciação científica e o protagonismo dos estudantes.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 47, acao: "Realizar anualmente uma aula de campo na Instituição de Ensino Superior FAG.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 48, acao: "Promover a implantação de uma composteira orgânica na escola para a integração das aulas teóricas e práticas.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 49, acao: "Promover uma visita anual à Horta Comunitária no povoado Matinha.", periodos: [3, 4], prazo: "AGOSTO A NOVEMBRO", status: 0 },
+            { ordem: 50, acao: "Realizar uma visita anual ao Parque de Exposição Agropecuário de Colmeia com alunos do Ensino Médio, para fortalecer a relação entre a escola e o setor agropecuário promovendo aprendizado prático e capacitação profissional.", periodos: [2], prazo: "MAIO", status: 0 },
+            { ordem: 51, acao: "Realizar na escola o dia D de visitação da comunidade acadêmica do município ao laboratório de Ciências.", periodos: [4], prazo: "DEZEMBRO", status: 0 },
+            { ordem: 52, acao: "Desenvolver anualmente palestra referente à educação ambiental conectando cuidados pessoais e higiene a um futuro sustentável.", periodos: [2], prazo: "JUNHO", status: 0 },
+            { ordem: 53, acao: "Realizar anualmente uma oficina de produção de repelente natural na semana de combate e conscientização das arboviroses.", periodos: [3], prazo: "AGOSTO, SETEMBRO", status: 0 },
+            { ordem: 54, acao: "Realizar anualmente a Feira de Ciências, com tema: Ciência, Sociedade e Ambiente (CSA) integrando todas as áreas do conhecimento e promovendo na culminância o concurso de mascotes de cada turma.", periodos: [4], prazo: "NOVEMBRO", status: 0 },
+            { ordem: 55, acao: "Promover a Semana do Excepcional com atividades diversificadas: Palestra, teatro, Gincanas, apresentações culturais.", periodos: [3], prazo: "AGOSTO", status: 0 },
+            { ordem: 56, acao: "Certificar anualmente os alunos da sala de recurso que se destacaram no desenvolvimento de habilidades de leitura, cálculos e convivência social.", periodos: [4], prazo: "DEZEMBRO", status: 0 },
+            { ordem: 57, acao: "Desenvolver duas oficinas anuais de libras.", periodos: [1], prazo: "ABRIL", status: 50 }
+        ];
+
+        // Função para atualizar a tabela com base nos filtros
+        function updateTable() {
+            const bimestreFilter = document.getElementById('bimestreFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const tableBody = document.getElementById('tableBody');
+            
+            // Limpar a tabela atual
+            tableBody.innerHTML = '';
+            
+            // Filtrar dados
+            let filteredAcoes = acoes;
+            
+            if (bimestreFilter !== 'todos') {
+                const bimestre = parseInt(bimestreFilter);
+                filteredAcoes = filteredAcoes.filter(acao => acao.periodos.includes(bimestre));
+            }
+            
+            if (statusFilter !== 'todos') {
+                const status = parseInt(statusFilter);
+                filteredAcoes = filteredAcoes.filter(acao => acao.status === status);
+            }
+            
+            // Preencher a tabela com os dados filtrados
+            filteredAcoes.forEach(acao => {
+                const row = document.createElement('tr');
+                
+                const periodosBimestres = acao.periodos.map(p => `${p}º`).join(', ');
+                
+                // Criar as células da linha
+                row.innerHTML = `
+                    <td>${acao.ordem}</td>
+                    <td>${acao.acao}</td>
+                    <td>${periodosBimestres}</td>
+                    <td>${acao.prazo}</td>
+                    <td class="status-cell status-${acao.status}">
+                        <select class="status-dropdown" data-ordem="${acao.ordem}">
+                            <option value="0" ${acao.status === 0 ? 'selected' : ''}>A Realizar</option>
+                            <option value="25" ${acao.status === 25 ? 'selected' : ''}>Realizada Parcialmente 25%</option>
+                            <option value="50" ${acao.status === 50 ? 'selected' : ''}>Realizada Parcialmente 50%</option>
+                            <option value="75" ${acao.status === 75 ? 'selected' : ''}>Realizada Parcialmente 75%</option>
+                            <option value="100" ${acao.status === 100 ? 'selected' : ''}>Concluída</option>
+                        </select>
+                    </td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: ${acao.status}%">${acao.status}%</div>
+                        </div>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Adicionar event listeners para as dropdowns de status
+            document.querySelectorAll('.status-dropdown').forEach(dropdown => {
+                dropdown.addEventListener('change', function() {
+                    const ordem = parseInt(this.dataset.ordem);
+                    const novoStatus = parseInt(this.value);
+                    
+                    // Atualizar o objeto de dados
+                    const acao = acoes.find(a => a.ordem === ordem);
+                    if (acao) {
+                        acao.status = novoStatus;
+                        
+                        // Atualizar a barra de progresso
+                        const progressBar = this.parentElement.nextElementSibling.querySelector('.progress');
+                        progressBar.style.width = `${novoStatus}%`;
+                        progressBar.textContent = `${novoStatus}%`;
+                        
+                        // Atualizar a cor da célula de status
+                        this.parentElement.className = `status-cell status-${novoStatus}`;
+                        
+                        // Atualizar o resumo e os gráficos
+                        updateSummary();
+                        updateCharts();
+                    }
+                });
+            });
+            
+            // Atualizar o resumo e os gráficos após filtrar
+            updateSummary();
+            updateCharts();
+        }
+        
+        // Função para atualizar o resumo
+        function updateSummary() {
+            const totalAcoes = acoes.length;
+            const acoesConcluidas = acoes.filter(a => a.status === 100).length;
+            const acoesAndamento = acoes.filter(a => a.status > 0 && a.status < 100).length;
+            const acoesARealizar = acoes.filter(a => a.status === 0).length;
+            
+            // Calcular o progresso geral
+            const progressoTotal = acoes.reduce((total, acao) => total + acao.status, 0);
+            const progressoGeral = Math.round((progressoTotal / (totalAcoes * 100)) * 100);
+            
+            // Atualizar os elementos HTML
+            document.getElementById('totalAcoes').textContent = totalAcoes;
+            document.getElementById('acoesConcluidas').textContent = acoesConcluidas;
+            document.getElementById('acoesAndamento').textContent = acoesAndamento;
+            document.getElementById('acoesARealizar').textContent = acoesARealizar;
+            
+            const progressoGeralElement = document.getElementById('progressoGeral');
+            progressoGeralElement.style.width = `${progressoGeral}%`;
+            progressoGeralElement.textContent = `${progressoGeral}%`;
+        }
+        
+        // Função para atualizar os gráficos
+        function updateCharts() {
+            updateStatusChart();
+            updateBimestreChart();
+        }
+        
+        // Função para atualizar o gráfico de status
+        function updateStatusChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            // Contagem por status
+            const statusCount = {
+                'A Realizar': acoes.filter(a => a.status === 0).length,
+                'Realizada Parcialmente 25%': acoes.filter(a => a.status === 25).length,
+                'Realizada Parcialmente 50%': acoes.filter(a => a.status === 50).length,
+                'Realizada Parcialmente 75%': acoes.filter(a => a.status === 75).length,
+                'Concluída': acoes.filter(a => a.status === 100).length
+            };
+            
+            // Se o gráfico já existe, destrua-o
+            if (window.statusChart) {
+                window.statusChart.destroy();
+            }
+            
+            // Criar o novo gráfico
+            window.statusChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(statusCount),
+                    datasets: [{
+                        data: Object.values(statusCount),
+                        backgroundColor: [
+                            '#ffebee', // A Realizar
+                            '#fff8e1', // 25%
+                            '#fff176', // 50%
+                            '#c5e1a5', // 75%
+                            '#a5d6a7'  // Concluída
+                        ],
+                        borderColor: [
+                            '#ef9a9a',
+                            '#ffe082',
+                            '#ffee58',
+                            '#aed581',
+                            '#81c784'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Distribuição por Status'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Função para atualizar o gráfico por bimestre
+        function updateBimestreChart() {
+            const ctx = document.getElementById('bimestreChart').getContext('2d');
+            
+            // Dados agrupados por bimestre
+            const bimestres = [1, 2, 3, 4];
+            const bimestreData = bimestres.map(bimestre => {
+                const acoesDoBimestre = acoes.filter(acao => acao.periodos.includes(bimestre));
+                const total = acoesDoBimestre.length;
+                const concluidas = acoesDoBimestre.filter(a => a.status === 100).length;
+                const andamento = acoesDoBimestre.filter(a => a.status > 0 && a.status < 100).length;
+                const aRealizar = acoesDoBimestre.filter(a => a.status === 0).length;
+                
+                return {
+                    bimestre: `${bimestre}º Bimestre`,
+                    total,
+                    concluidas,
+                    andamento,
+                    aRealizar,
+                    progresso: total > 0 ? Math.round((acoesDoBimestre.reduce((sum, acao) => sum + acao.status, 0) / (total * 100)) * 100) : 0
+                };
+            });
+            
+            // Se o gráfico já existe, destrua-o
+            if (window.bimestreChart) {
+                window.bimestreChart.destroy();
+            }
+            
+            // Criar o novo gráfico
+            window.bimestreChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bimestreData.map(d => d.bimestre),
+                    datasets: [
+                        {
+                            label: 'Progresso (%)',
+                            data: bimestreData.map(d => d.progresso),
+                            backgroundColor: '#4CAF50',
+                            borderColor: '#388E3C',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Progresso por Bimestre'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    const data = bimestreData[idx];
+                                    return [
+                                        `Total de Ações: ${data.total}`,
+                                        `Concluídas: ${data.concluidas}`,
+                                        `Em Andamento: ${data.andamento}`,
+                                        `A Realizar: ${data.aRealizar}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Progresso (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Função para exportar para Excel
+        function exportToExcel() {
+            // Criar um array com os dados da tabela
+            const data = acoes.map(acao => {
+                let statusText = 'A Realizar';
+                if (acao.status === 25) statusText = 'Realizada Parcialmente 25%';
+                if (acao.status === 50) statusText = 'Realizada Parcialmente 50%';
+                if (acao.status === 75) statusText = 'Realizada Parcialmente 75%';
+                if (acao.status === 100) statusText = 'Concluída';
+                
+                return {
+                    'Ordem': acao.ordem,
+                    'Ação': acao.acao,
+                    'Períodos (Bimestres)': acao.periodos.map(p => `${p}º`).join(', '),
+                    'Prazo': acao.prazo,
+                    'Status': statusText,
+                    'Progresso (%)': acao.status
+                };
+            });
+            
+            // Criar uma planilha
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Ações PPP 2025');
+            
+            // Ajustar a largura das colunas
+            const colWidths = [
+                { wch: 6 },    // Ordem
+                { wch: 80 },   // Ação
+                { wch: 20 },   // Períodos
+                { wch: 35 },   // Prazo
+                { wch: 25 },   // Status
+                { wch: 15 }    // Progresso
+            ];
+            worksheet['!cols'] = colWidths;
+            
+            // Exportar para arquivo
+            XLSX.writeFile(workbook, 'Ações_PPP_2025.xlsx');
+        }
+        
+        // Função para imprimir a tabela
+        function printTable() {
+            window.print();
+        }
+        
+        // Adicionar event listeners aos controles
+        document.getElementById('bimestreFilter').addEventListener('change', updateTable);
+        document.getElementById('statusFilter').addEventListener('change', updateTable);
+        document.getElementById('refreshData').addEventListener('click', updateTable);
+        document.getElementById('downloadExcel').addEventListener('click', exportToExcel);
+        document.getElementById('printTable').addEventListener('click', printTable);
+        
+        // Inicializar a tabela e os gráficos quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTable();
+        });
+    </script>
+</body>
+</html>
+            
